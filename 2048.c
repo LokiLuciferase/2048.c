@@ -87,7 +87,7 @@ void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score)
 		printf("\n");
 	}
 	printf("\n");
-	printf("        ←,↑,→,↓ or q        \n");
+	printf("      ←,↑,→,↓,u or q        \n");
 	printf("\033[A"); // one line up
 }
 
@@ -267,18 +267,12 @@ bool gameEnded(uint8_t board[SIZE][SIZE])
 	return ended;
 }
 
-void addRandom(uint8_t board[SIZE][SIZE])
+void addRandom(uint8_t board[SIZE][SIZE], time_t seed)
 {
-	static bool initialized = false;
+	srand(seed);
 	uint8_t x, y;
 	uint8_t r, len = 0;
 	uint8_t n, list[SIZE * SIZE][2];
-
-	if (!initialized)
-	{
-		srand(time(NULL));
-		initialized = true;
-	}
 
 	for (x = 0; x < SIZE; x++)
 	{
@@ -313,8 +307,21 @@ void initBoard(uint8_t board[SIZE][SIZE])
 			board[x][y] = 0;
 		}
 	}
-	addRandom(board);
-	addRandom(board);
+	addRandom(board, rand());
+	addRandom(board, rand());
+}
+
+void backupState(uint8_t board[SIZE][SIZE], uint8_t bboard[SIZE][SIZE], uint32_t *score, uint32_t *bscore, time_t *seed, time_t *bseed)
+{
+	memcpy(bboard, board, SIZE * SIZE);
+	*bscore = *score;
+	*bseed = *seed;
+}
+
+void updateSeed(time_t *seed)
+{
+    srand(*seed);
+    *seed = rand();
 }
 
 void setBufferedInput(bool enable)
@@ -434,11 +441,18 @@ void signal_callback_handler(int signum)
 	exit(signum);
 }
 
+
 int main(int argc, char *argv[])
 {
 	uint8_t board[SIZE][SIZE];
 	uint8_t scheme = 0;
 	uint32_t score = 0;
+	time_t seed = time(NULL);
+    updateSeed(&seed);
+
+	uint8_t backup_board[SIZE][SIZE];
+	uint32_t backup_score = 0;
+	time_t backup_seed = seed;
 	char c;
 	bool success;
 
@@ -462,6 +476,7 @@ int main(int argc, char *argv[])
 	signal(SIGINT, signal_callback_handler);
 
 	initBoard(board);
+	backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
 	setBufferedInput(false);
 	drawBoard(board, scheme, score);
 	while (true)
@@ -477,21 +492,25 @@ int main(int argc, char *argv[])
 		case 97:  // 'a' key
 		case 104: // 'h' key
 		case 68:  // left arrow
+			backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
 			success = moveLeft(board, &score);
 			break;
 		case 100: // 'd' key
 		case 108: // 'l' key
 		case 67:  // right arrow
+			backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
 			success = moveRight(board, &score);
 			break;
 		case 119: // 'w' key
 		case 107: // 'k' key
 		case 65:  // up arrow
+			backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
 			success = moveUp(board, &score);
 			break;
 		case 115: // 's' key
 		case 106: // 'j' key
 		case 66:  // down arrow
+			backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
 			success = moveDown(board, &score);
 			break;
 		default:
@@ -501,13 +520,27 @@ int main(int argc, char *argv[])
 		{
 			drawBoard(board, scheme, score);
 			usleep(150 * 1000); // 150 ms
-			addRandom(board);
+			addRandom(board, seed);
 			drawBoard(board, scheme, score);
+			updateSeed(&seed);
 			if (gameEnded(board))
 			{
-				printf("         GAME OVER          \n");
-				break;
+				printf("    GAME OVER, UNDO? (y/n)  \n");
+				c = getchar();
+				if (c == 'y')
+				{
+					backupState(backup_board, board, &backup_score, &score, &backup_seed, &seed);
+					drawBoard(board, scheme, score);
+				}
+				else
+				{
+					break;
+				}
 			}
+		}
+		if (c == 'u'){
+			backupState(backup_board, board, &backup_score, &score, &backup_seed, &seed);
+			drawBoard(board, scheme, score);
 		}
 		if (c == 'q')
 		{
@@ -527,6 +560,8 @@ int main(int argc, char *argv[])
 			{
 				initBoard(board);
 				score = 0;
+				updateSeed(&seed);
+				backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
 			}
 			drawBoard(board, scheme, score);
 		}
