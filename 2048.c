@@ -320,8 +320,8 @@ void backupState(uint8_t board[SIZE][SIZE], uint8_t bboard[SIZE][SIZE], uint32_t
 
 void updateSeed(time_t *seed)
 {
-    srand(*seed);
-    *seed = rand();
+	srand(*seed);
+	*seed = rand();
 }
 
 void setBufferedInput(bool enable)
@@ -443,11 +443,11 @@ void signal_callback_handler(int signum)
 
 int play(char *color_scheme)
 {
-    uint8_t board[SIZE][SIZE];
+	uint8_t board[SIZE][SIZE];
 	uint8_t scheme = 0;
 	uint32_t score = 0;
 	time_t seed = time(NULL);
-    updateSeed(&seed);
+	updateSeed(&seed);
 
 	uint8_t backup_board[SIZE][SIZE];
 	uint32_t backup_score = 0;
@@ -520,8 +520,21 @@ int play(char *color_scheme)
 			if (gameEnded(board))
 			{
 				printf("    GAME OVER, UNDO? (y/n)  \n");
-				c = getchar();
-				if (c == 'y')
+				bool undo = false;
+				while (true)
+				{
+					c = getchar();
+					if (c == 'y')
+					{
+						undo = true;
+						break;
+					}
+					else if (c == 'n')
+					{
+					break;
+					}
+				}
+				if (undo)
 				{
 					backupState(backup_board, board, &backup_score, &score, &backup_seed, &seed);
 					drawBoard(board, scheme, score);
