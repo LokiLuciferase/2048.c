@@ -441,10 +441,9 @@ void signal_callback_handler(int signum)
 	exit(signum);
 }
 
-
-int main(int argc, char *argv[])
+int play(char *color_scheme)
 {
-	uint8_t board[SIZE][SIZE];
+    uint8_t board[SIZE][SIZE];
 	uint8_t scheme = 0;
 	uint32_t score = 0;
 	time_t seed = time(NULL);
@@ -455,16 +454,11 @@ int main(int argc, char *argv[])
 	time_t backup_seed = seed;
 	char c;
 	bool success;
-
-	if (argc == 2 && strcmp(argv[1], "test") == 0)
-	{
-		return test();
-	}
-	if (argc == 2 && strcmp(argv[1], "blackwhite") == 0)
+	if (strcmp(color_scheme, "blackwhite") == 0)
 	{
 		scheme = 1;
 	}
-	if (argc == 2 && strcmp(argv[1], "bluered") == 0)
+	if (strcmp(color_scheme, "bluered") == 0)
 	{
 		scheme = 2;
 	}
@@ -572,4 +566,39 @@ int main(int argc, char *argv[])
 	printf("\033[?25h\033[m");
 
 	return EXIT_SUCCESS;
+}
+
+void getOpts(int argc, char *argv[], bool *test_mode, char* color_scheme)
+{
+    int opt;
+    while ((opt = getopt(argc, argv, "tc")) != -1)
+    {
+        switch (opt)
+        {
+        case 't':
+            *test_mode = true;
+            break;
+        case 'c':
+            strcpy(color_scheme, argv[optind]);
+            break;
+        default:
+            printf("Usage: %s [-t] [-c <standard|blackwhite|bluered] \n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    bool test_mode = false;
+    char color_scheme[10] = "standard";
+    getOpts(argc, argv, &test_mode, color_scheme);
+    if (test_mode)
+    {
+        exit(test());
+    }
+    else
+    {
+        exit(play(color_scheme));
+    }
 }
