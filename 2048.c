@@ -10,7 +10,7 @@
 #include <stdio.h>	  // defines: printf, puts, getchar
 #include <stdlib.h>	  // defines: EXIT_SUCCESS
 #include <string.h>	  // defines: strcmp
-#include <unistd.h>	  // defines: STDIN_FILENO, usleep
+#include <unistd.h>	  // defines: STDIN_FILENO, usleep, getopt
 #include <termios.h>	  // defines: termios, TCSANOW, ICANON, ECHO
 #include <stdbool.h>	  // defines: true, false
 #include <stdint.h>	  // defines: uint8_t, uint32_t
