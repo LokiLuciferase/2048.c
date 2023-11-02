@@ -16,6 +16,7 @@
 #include <stdint.h>	  // defines: uint8_t, uint32_t
 #include <time.h>	  // defines: time
 #include <signal.h>	  // defines: signal, SIGINT
+#include <sys/stat.h> // defines: mkdir
 
 #define SIZE 4
 
@@ -352,6 +353,38 @@ void setBufferedInput(bool enable)
 	}
 }
 
+void writeScore(uint32_t score)
+{
+    char* config_dir_prefix;
+    char* config_dir;
+    char* game_dir;
+    char* score_file;
+    config_dir = getenv("XDG_CONFIG_HOME");
+    if (config_dir == NULL)
+    {
+        config_dir_prefix = getenv("HOME");
+        if (config_dir_prefix == NULL)
+        {
+            printf("Error!");
+            exit(1);
+        }
+    config_dir = strcat(config_dir_prefix, "/.config");
+    }
+    game_dir = strcat(config_dir, "/2048");
+    mkdir(game_dir, 0777);
+    score_file = strcat(game_dir, "/score.txt");
+    FILE *fptr;
+    fptr = fopen(score_file, "a");
+    if (fptr == NULL)
+    {
+        printf("Error!");
+        exit(1);
+    }
+    // print unixtime\tscore to file
+    fprintf(fptr, "%ld\t%u\n", time(NULL), score);
+    fclose(fptr);
+}
+
 int test()
 {
 	uint8_t array[SIZE];
@@ -565,6 +598,7 @@ int play(char *color_scheme)
 			c = getchar();
 			if (c == 'y')
 			{
+                writeScore(score);
 				initBoard(board);
 				score = 0;
 				updateSeed(&seed);
@@ -578,6 +612,7 @@ int play(char *color_scheme)
 	// make cursor visible, reset all modes
 	printf("\033[?25h\033[m");
 
+    writeScore(score);
 	return EXIT_SUCCESS;
 }
 
