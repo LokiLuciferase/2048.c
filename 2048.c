@@ -56,7 +56,7 @@ void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score)
             // send the addresses of the foreground and background variables,
             // so that they can be modified by the getColors function
             getColors(board[x][y], scheme, &fg, &bg);
-            printf("\033[38;5;%d;48;5;%dm", fg, bg); // set color
+            printf("\033[1;38;5;%d;48;5;%dm", fg, bg); // set color
             printf("       ");
             printf("\033[m"); // reset all modes
         }
@@ -64,7 +64,7 @@ void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score)
         for (x = 0; x < SIZE; x++)
         {
             getColors(board[x][y], scheme, &fg, &bg);
-            printf("\033[38;5;%d;48;5;%dm", fg, bg); // set color
+            printf("\033[1;38;5;%d;48;5;%dm", fg, bg); // set color
             if (board[x][y] != 0)
             {
                 uint32_t number = 1 << board[x][y];
@@ -81,7 +81,7 @@ void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score)
         for (x = 0; x < SIZE; x++)
         {
             getColors(board[x][y], scheme, &fg, &bg);
-            printf("\033[38;5;%d;48;5;%dm", fg, bg); // set color
+            printf("\033[1;38;5;%d;48;5;%dm", fg, bg); // set color
             printf("       ");
             printf("\033[m"); // reset all modes
         }
