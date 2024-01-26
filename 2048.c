@@ -552,7 +552,7 @@ int play(char *color_scheme)
             updateSeed(&seed);
             if (gameEnded(board))
             {
-                printf("    GAME OVER, UNDO? (y/n)  \n");
+                printf("    GAME OVER, UNDO? (y/N)  \n");
                 bool undo = false;
                 while (true)
                 {
@@ -562,9 +562,9 @@ int play(char *color_scheme)
                         undo = true;
                         break;
                     }
-                    else if (c == 'n')
+                    else if ((c == 'n') || (c == '\n'))
                     {
-                    break;
+                        break;
                     }
                 }
                 if (undo)
@@ -584,7 +584,7 @@ int play(char *color_scheme)
         }
         if (c == 'q')
         {
-            printf("        QUIT? (y/n)         \n");
+            printf("        QUIT? (y/N)         \n");
             c = getchar();
             if (c == 'y')
             {
@@ -594,7 +594,7 @@ int play(char *color_scheme)
         }
         if (c == 'r')
         {
-            printf("       RESTART? (y/n)       \n");
+            printf("       RESTART? (y/N)       \n");
             c = getchar();
             if (c == 'y')
             {
