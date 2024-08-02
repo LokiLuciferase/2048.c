@@ -88,7 +88,7 @@ void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score)
         printf("\n");
     }
     printf("\n");
-    printf("      ←,↑,→,↓,u or q        \n");
+    printf("     ←,↑,→,↓,u,x or q       \n");
     printf("\033[A"); // one line up
 }
 
@@ -353,27 +353,40 @@ void setBufferedInput(bool enable)
     }
 }
 
+
+char* concatenate(char *a, char *b)
+{
+    char* c = calloc(1, strlen(a) + strlen(b) + 1);
+    strcpy(c, a);
+    strcat(c, b);
+    return c;
+}
+
+char* getGameDir()
+{
+    char * game_dir;
+    if (getenv("HOME") == NULL)
+    {
+        printf("Error!");
+        exit(1);
+    }
+    else if (getenv("XDG_CONFIG_HOME") == NULL)
+    {
+        game_dir = concatenate(concatenate(getenv("HOME"), "/.config"), "/2048");
+    }
+    else
+    {
+        game_dir = concatenate(getenv("XDG_CONFIG_HOME"), "/2048");
+    }
+    mkdir(game_dir, 0777);
+    return game_dir;
+}
+
 void writeScore(uint32_t score)
 {
-    char* config_dir_prefix;
-    char* config_dir;
-    char* game_dir;
     char* score_file;
-    config_dir = getenv("XDG_CONFIG_HOME");
-    if (config_dir == NULL)
-    {
-        config_dir_prefix = getenv("HOME");
-        if (config_dir_prefix == NULL)
-        {
-            printf("Error!");
-            exit(1);
-        }
-    config_dir = strcat(config_dir_prefix, "/.config");
-    }
-    game_dir = strcat(config_dir, "/2048");
-    mkdir(game_dir, 0777);
-    score_file = strcat(game_dir, "/score.txt");
-    FILE *fptr;
+    score_file = concatenate(getGameDir(), "/score.txt");
+    FILE* fptr;
     fptr = fopen(score_file, "a");
     if (fptr == NULL)
     {
@@ -383,6 +396,47 @@ void writeScore(uint32_t score)
     // print unixtime\tscore to file
     fprintf(fptr, "%ld\t%u\n", time(NULL), score);
     fclose(fptr);
+}
+
+bool loadStateFromFile(uint8_t board[SIZE][SIZE], uint32_t *score, time_t *seed)
+{
+    char* state_file;
+    state_file = concatenate(getGameDir(), "/state");
+    FILE* fptr;
+    fptr = fopen(state_file, "rb");
+    if (fptr == NULL)
+    {
+        initBoard(board);
+        return false;
+    }
+    else
+    {
+        size_t board_loaded = fread(board, sizeof(uint8_t), SIZE * SIZE, fptr);
+        size_t score_loaded = fread(score, sizeof(uint32_t), 1, fptr);
+        size_t seed_loaded = fread(seed, sizeof(time_t), 1, fptr);
+        remove(state_file);
+        fclose(fptr);
+        return true;
+    }
+}
+
+void writeStateToFile(uint8_t board[SIZE][SIZE], uint32_t *score, time_t *seed)
+{
+    char* state_file;
+    state_file = concatenate(getGameDir(), "/state");
+    FILE* fptr;
+    fptr = fopen(state_file, "wb");
+    if (fptr == NULL)
+    {
+        printf("Error opening state file for writing!");
+    }
+    else
+    {
+        size_t board_written = fwrite(board, sizeof(uint8_t), SIZE * SIZE, fptr);
+        size_t score_written = fwrite(score, sizeof(uint32_t), 1, fptr);
+        size_t seed_written = fwrite(seed, sizeof(time_t), 1, fptr);
+        fclose(fptr);
+    }
 }
 
 int test()
@@ -474,8 +528,12 @@ void signal_callback_handler(int signum)
     exit(signum);
 }
 
-int play(char *color_scheme)
+int play(char *color_scheme, bool *do_load)
 {
+    char* game_dir;
+    game_dir = getGameDir();
+    bool state_loaded = false;
+
     uint8_t board[SIZE][SIZE];
     uint8_t scheme = 0;
     uint32_t score = 0;
@@ -502,10 +560,21 @@ int play(char *color_scheme)
     // register signal handler for when ctrl-c is pressed
     signal(SIGINT, signal_callback_handler);
 
-    initBoard(board);
+    if (*do_load)
+    {
+        state_loaded = loadStateFromFile(board, &score, &seed);
+    }
+    else
+    {
+        initBoard(board);
+    }
     backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
     setBufferedInput(false);
     drawBoard(board, scheme, score);
+    if (state_loaded)
+    {
+        printf("       State loaded.      \n");
+    }
     while (true)
     {
         c = getchar();
@@ -606,6 +675,13 @@ int play(char *color_scheme)
             }
             drawBoard(board, scheme, score);
         }
+        if (c == 'x')
+        {
+            writeStateToFile(board, &score, &seed);
+            printf("       State written.       \n");
+            printf("\033[?25h\033[m");
+            return EXIT_SUCCESS;
+        }
     }
     setBufferedInput(true);
 
@@ -616,10 +692,10 @@ int play(char *color_scheme)
     return EXIT_SUCCESS;
 }
 
-void getOpts(int argc, char *argv[], bool *test_mode, char* color_scheme)
+void getOpts(int argc, char *argv[], bool *test_mode, bool *do_load, char* color_scheme)
 {
     int opt;
-    while ((opt = getopt(argc, argv, "tc")) != -1)
+    while ((opt = getopt(argc, argv, "tcl")) != -1)
     {
         switch (opt)
         {
@@ -629,8 +705,11 @@ void getOpts(int argc, char *argv[], bool *test_mode, char* color_scheme)
         case 'c':
             strcpy(color_scheme, argv[optind]);
             break;
+        case 'l':
+            *do_load = true;
+            break;
         default:
-            printf("Usage: %s [-t] [-c <standard|blackwhite|bluered] \n", argv[0]);
+            printf("Usage: %s [-t] [-l] [-c <standard|blackwhite|bluered] \n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
@@ -639,14 +718,15 @@ void getOpts(int argc, char *argv[], bool *test_mode, char* color_scheme)
 int main(int argc, char *argv[])
 {
     bool test_mode = false;
+    bool do_load = false;
     char color_scheme[10] = "standard";
-    getOpts(argc, argv, &test_mode, color_scheme);
+    getOpts(argc, argv, &test_mode, &do_load, color_scheme);
     if (test_mode)
     {
         exit(test());
     }
     else
     {
-        exit(play(color_scheme));
+        exit(play(color_scheme, &do_load));
     }
 }
