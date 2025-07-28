@@ -411,9 +411,9 @@ bool loadStateFromFile(uint8_t board[SIZE][SIZE], uint32_t *score, time_t *seed)
     }
     else
     {
-        size_t board_loaded = fread(board, sizeof(uint8_t), SIZE * SIZE, fptr);
-        size_t score_loaded = fread(score, sizeof(uint32_t), 1, fptr);
-        size_t seed_loaded = fread(seed, sizeof(time_t), 1, fptr);
+        fread(board, sizeof(uint8_t), SIZE * SIZE, fptr);
+        fread(score, sizeof(uint32_t), 1, fptr);
+        fread(seed, sizeof(time_t), 1, fptr);
         remove(state_file);
         fclose(fptr);
         return true;
@@ -432,9 +432,9 @@ void writeStateToFile(uint8_t board[SIZE][SIZE], uint32_t *score, time_t *seed)
     }
     else
     {
-        size_t board_written = fwrite(board, sizeof(uint8_t), SIZE * SIZE, fptr);
-        size_t score_written = fwrite(score, sizeof(uint32_t), 1, fptr);
-        size_t seed_written = fwrite(seed, sizeof(time_t), 1, fptr);
+        fwrite(board, sizeof(uint8_t), SIZE * SIZE, fptr);
+        fwrite(score, sizeof(uint32_t), 1, fptr);
+        fwrite(seed, sizeof(time_t), 1, fptr);
         fclose(fptr);
     }
 }
@@ -528,10 +528,8 @@ void signal_callback_handler(int signum)
     exit(signum);
 }
 
-int play(char *color_scheme, bool *do_load)
+int play(char *color_scheme, bool *do_load, bool *seed_hacking)
 {
-    char* game_dir;
-    game_dir = getGameDir();
     bool state_loaded = false;
 
     uint8_t board[SIZE][SIZE];
@@ -648,7 +646,15 @@ int play(char *color_scheme, bool *do_load)
             }
         }
         if (c == 'u'){
-            backupState(backup_board, board, &backup_score, &score, &backup_seed, &seed);
+            printf("Result: %b", success);
+            time_t seed_to_use;
+            if (*seed_hacking) {
+                seed_to_use = time(NULL);
+            }
+            else {
+                seed_to_use = backup_seed;
+            }
+            backupState(backup_board, board, &backup_score, &score, &seed_to_use, &seed);
             drawBoard(board, scheme, score);
         }
         if (c == 'q')
@@ -692,10 +698,17 @@ int play(char *color_scheme, bool *do_load)
     return EXIT_SUCCESS;
 }
 
-void getOpts(int argc, char *argv[], bool *test_mode, bool *do_load, char* color_scheme)
+void getOpts(
+    int argc,
+    char *argv[],
+    bool *test_mode,
+    bool *do_load,
+    bool *seed_hacking,
+    char* color_scheme
+)
 {
     int opt;
-    while ((opt = getopt(argc, argv, "tcl")) != -1)
+    while ((opt = getopt(argc, argv, "tcls")) != -1)
     {
         switch (opt)
         {
@@ -708,8 +721,11 @@ void getOpts(int argc, char *argv[], bool *test_mode, bool *do_load, char* color
         case 'l':
             *do_load = true;
             break;
+        case 's':
+            *seed_hacking = true;
+            break;
         default:
-            printf("Usage: %s [-t] [-l] [-c <standard|blackwhite|bluered] \n", argv[0]);
+            printf("Usage: %s [-t] [-l] [-s] [-c <standard|blackwhite|bluered] \n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
@@ -719,14 +735,15 @@ int main(int argc, char *argv[])
 {
     bool test_mode = false;
     bool do_load = false;
+    bool seed_hacking = false;
     char color_scheme[10] = "standard";
-    getOpts(argc, argv, &test_mode, &do_load, color_scheme);
+    getOpts(argc, argv, &test_mode, &do_load, &seed_hacking, color_scheme);
     if (test_mode)
     {
         exit(test());
     }
     else
     {
-        exit(play(color_scheme, &do_load));
+        exit(play(color_scheme, &do_load, &seed_hacking));
     }
 }
