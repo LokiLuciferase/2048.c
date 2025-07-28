@@ -7,52 +7,54 @@
  */
 
 #define _XOPEN_SOURCE 500 // for: usleep
-#include <stdio.h>    // defines: printf, puts, getchar
-#include <stdlib.h>   // defines: EXIT_SUCCESS
-#include <string.h>   // defines: strcmp
-#include <unistd.h>   // defines: STDIN_FILENO, usleep, getopt
-#include <termios.h>      // defines: termios, TCSANOW, ICANON, ECHO
+#include <signal.h>       // defines: signal, SIGINT
 #include <stdbool.h>      // defines: true, false
-#include <stdint.h>   // defines: uint8_t, uint32_t
-#include <time.h>     // defines: time
-#include <signal.h>   // defines: signal, SIGINT
-#include <sys/stat.h> // defines: mkdir
+#include <stdint.h>       // defines: uint8_t, uint32_t
+#include <stdio.h>        // defines: printf, puts, getchar
+#include <stdlib.h>       // defines: EXIT_SUCCESS
+#include <string.h>       // defines: strcmp
+#include <sys/stat.h>     // defines: mkdir
+#include <termios.h>      // defines: termios, TCSANOW, ICANON, ECHO
+#include <time.h>         // defines: time
+#include <unistd.h>       // defines: STDIN_FILENO, usleep, getopt
 
 #define SIZE 4
 
 // this function receives 2 pointers (indicated by *) so it can set their values
-void getColors(uint8_t value, uint8_t scheme, uint8_t *foreground, uint8_t *background)
-{
-    uint8_t original[] = {8, 255, 1, 255, 2, 255, 3, 255, 4, 255, 5, 255, 6, 255, 7, 255, 9, 0, 10, 0, 11, 0, 12, 0, 13, 0, 14, 0, 255, 0, 255, 0};
-    uint8_t blackwhite[] = {232, 255, 234, 255, 236, 255, 238, 255, 240, 255, 242, 255, 244, 255, 246, 0, 248, 0, 249, 0, 250, 0, 251, 0, 252, 0, 253, 0, 254, 0, 255, 0};
-    uint8_t bluered[] = {235, 255, 63, 255, 57, 255, 93, 255, 129, 255, 165, 255, 201, 255, 200, 255, 199, 255, 198, 255, 197, 255, 196, 255, 196, 255, 196, 255, 196, 255, 196, 255};
+void getColors(uint8_t value, uint8_t scheme, uint8_t *foreground,
+               uint8_t *background) {
+    uint8_t original[] = {8,   255, 1,   255, 2,   255, 3,   255, 4,   255, 5,
+        255, 6,   255, 7,   255, 9,   0,   10,  0,   11,  0,
+        12,  0,   13,  0,   14,  0,   255, 0,   255, 0};
+    uint8_t blackwhite[] = {232, 255, 234, 255, 236, 255, 238, 255, 240, 255, 242,
+        255, 244, 255, 246, 0,   248, 0,   249, 0,   250, 0,
+        251, 0,   252, 0,   253, 0,   254, 0,   255, 0};
+    uint8_t bluered[] = {235, 255, 63,  255, 57,  255, 93,  255, 129, 255, 165,
+        255, 201, 255, 200, 255, 199, 255, 198, 255, 197, 255,
+        196, 255, 196, 255, 196, 255, 196, 255, 196, 255};
     uint8_t *schemes[] = {original, blackwhite, bluered};
-    // modify the 'pointed to' variables (using a * on the left hand of the assignment)
+    // modify the 'pointed to' variables (using a * on the left hand of the
+    // assignment)
     *foreground = *(schemes[scheme] + (1 + value * 2) % sizeof(original));
     *background = *(schemes[scheme] + (0 + value * 2) % sizeof(original));
     // alternatively we could have returned a struct with two variables
 }
 
-uint8_t getDigitCount(uint32_t number)
-{
+uint8_t getDigitCount(uint32_t number) {
     uint8_t count = 0;
-    do
-    {
+    do {
         number /= 10;
         count += 1;
     } while (number);
     return count;
 }
 
-void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score)
-{
+void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score) {
     uint8_t x, y, fg, bg;
     printf("\033[H"); // move cursor to 0,0
     printf("2048.c %17d pts\n\n", score);
-    for (y = 0; y < SIZE; y++)
-    {
-        for (x = 0; x < SIZE; x++)
-        {
+    for (y = 0; y < SIZE; y++) {
+        for (x = 0; x < SIZE; x++) {
             // send the addresses of the foreground and background variables,
             // so that they can be modified by the getColors function
             getColors(board[x][y], scheme, &fg, &bg);
@@ -61,25 +63,20 @@ void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score)
             printf("\033[m"); // reset all modes
         }
         printf("\n");
-        for (x = 0; x < SIZE; x++)
-        {
+        for (x = 0; x < SIZE; x++) {
             getColors(board[x][y], scheme, &fg, &bg);
             printf("\033[1;38;5;%d;48;5;%dm", fg, bg); // set color
-            if (board[x][y] != 0)
-            {
+            if (board[x][y] != 0) {
                 uint32_t number = 1 << board[x][y];
                 uint8_t t = 7 - getDigitCount(number);
                 printf("%*s%u%*s", t - t / 2, "", number, t / 2, "");
-            }
-            else
-            {
+            } else {
                 printf("   ·   ");
             }
             printf("\033[m"); // reset all modes
         }
         printf("\n");
-        for (x = 0; x < SIZE; x++)
-        {
+        for (x = 0; x < SIZE; x++) {
             getColors(board[x][y], scheme, &fg, &bg);
             printf("\033[1;38;5;%d;48;5;%dm", fg, bg); // set color
             printf("       ");
@@ -92,30 +89,22 @@ void drawBoard(uint8_t board[SIZE][SIZE], uint8_t scheme, uint32_t score)
     printf("\033[A"); // one line up
 }
 
-uint8_t findTarget(uint8_t array[SIZE], uint8_t x, uint8_t stop)
-{
+uint8_t findTarget(uint8_t array[SIZE], uint8_t x, uint8_t stop) {
     uint8_t t;
     // if the position is already on the first, don't evaluate
-    if (x == 0)
-    {
+    if (x == 0) {
         return x;
     }
-    for (t = x - 1;; t--)
-    {
-        if (array[t] != 0)
-        {
-            if (array[t] != array[x])
-            {
+    for (t = x - 1;; t--) {
+        if (array[t] != 0) {
+            if (array[t] != array[x]) {
                 // merge is not possible, take next position
                 return t + 1;
             }
             return t;
-        }
-        else
-        {
+        } else {
             // we should not slide further, return this one
-            if (t == stop)
-            {
+            if (t == stop) {
                 return t;
             }
         }
@@ -124,26 +113,19 @@ uint8_t findTarget(uint8_t array[SIZE], uint8_t x, uint8_t stop)
     return x;
 }
 
-bool slideArray(uint8_t array[SIZE], uint32_t *score)
-{
+bool slideArray(uint8_t array[SIZE], uint32_t *score) {
     bool success = false;
     uint8_t x, t, stop = 0;
 
-    for (x = 0; x < SIZE; x++)
-    {
-        if (array[x] != 0)
-        {
+    for (x = 0; x < SIZE; x++) {
+        if (array[x] != 0) {
             t = findTarget(array, x, stop);
             // if target is not original position, then move or merge
-            if (t != x)
-            {
+            if (t != x) {
                 // if target is zero, this is a move
-                if (array[t] == 0)
-                {
+                if (array[t] == 0) {
                     array[t] = array[x];
-                }
-                else if (array[t] == array[x])
-                {
+                } else if (array[t] == array[x]) {
                     // merge (increase power of two)
                     array[t]++;
                     // increase score
@@ -159,14 +141,11 @@ bool slideArray(uint8_t array[SIZE], uint32_t *score)
     return success;
 }
 
-void rotateBoard(uint8_t board[SIZE][SIZE])
-{
+void rotateBoard(uint8_t board[SIZE][SIZE]) {
     uint8_t i, j, n = SIZE;
     uint8_t tmp;
-    for (i = 0; i < n / 2; i++)
-    {
-        for (j = i; j < n - i - 1; j++)
-        {
+    for (i = 0; i < n / 2; i++) {
+        for (j = i; j < n - i - 1; j++) {
             tmp = board[i][j];
             board[i][j] = board[j][n - i - 1];
             board[j][n - i - 1] = board[n - i - 1][n - j - 1];
@@ -176,19 +155,16 @@ void rotateBoard(uint8_t board[SIZE][SIZE])
     }
 }
 
-bool moveUp(uint8_t board[SIZE][SIZE], uint32_t *score)
-{
+bool moveUp(uint8_t board[SIZE][SIZE], uint32_t *score) {
     bool success = false;
     uint8_t x;
-    for (x = 0; x < SIZE; x++)
-    {
+    for (x = 0; x < SIZE; x++) {
         success |= slideArray(board[x], score);
     }
     return success;
 }
 
-bool moveLeft(uint8_t board[SIZE][SIZE], uint32_t *score)
-{
+bool moveLeft(uint8_t board[SIZE][SIZE], uint32_t *score) {
     bool success;
     rotateBoard(board);
     success = moveUp(board, score);
@@ -198,8 +174,7 @@ bool moveLeft(uint8_t board[SIZE][SIZE], uint32_t *score)
     return success;
 }
 
-bool moveDown(uint8_t board[SIZE][SIZE], uint32_t *score)
-{
+bool moveDown(uint8_t board[SIZE][SIZE], uint32_t *score) {
     bool success;
     rotateBoard(board);
     rotateBoard(board);
@@ -209,8 +184,7 @@ bool moveDown(uint8_t board[SIZE][SIZE], uint32_t *score)
     return success;
 }
 
-bool moveRight(uint8_t board[SIZE][SIZE], uint32_t *score)
-{
+bool moveRight(uint8_t board[SIZE][SIZE], uint32_t *score) {
     bool success;
     rotateBoard(board);
     rotateBoard(board);
@@ -220,14 +194,11 @@ bool moveRight(uint8_t board[SIZE][SIZE], uint32_t *score)
     return success;
 }
 
-bool findPairDown(uint8_t board[SIZE][SIZE])
-{
+bool findPairDown(uint8_t board[SIZE][SIZE]) {
     bool success = false;
     uint8_t x, y;
-    for (x = 0; x < SIZE; x++)
-    {
-        for (y = 0; y < SIZE - 1; y++)
-        {
+    for (x = 0; x < SIZE; x++) {
+        for (y = 0; y < SIZE - 1; y++) {
             if (board[x][y] == board[x][y + 1])
                 return true;
         }
@@ -235,16 +206,12 @@ bool findPairDown(uint8_t board[SIZE][SIZE])
     return success;
 }
 
-uint8_t countEmpty(uint8_t board[SIZE][SIZE])
-{
+uint8_t countEmpty(uint8_t board[SIZE][SIZE]) {
     uint8_t x, y;
     uint8_t count = 0;
-    for (x = 0; x < SIZE; x++)
-    {
-        for (y = 0; y < SIZE; y++)
-        {
-            if (board[x][y] == 0)
-            {
+    for (x = 0; x < SIZE; x++) {
+        for (y = 0; y < SIZE; y++) {
+            if (board[x][y] == 0) {
                 count++;
             }
         }
@@ -252,8 +219,7 @@ uint8_t countEmpty(uint8_t board[SIZE][SIZE])
     return count;
 }
 
-bool gameEnded(uint8_t board[SIZE][SIZE])
-{
+bool gameEnded(uint8_t board[SIZE][SIZE]) {
     bool ended = true;
     if (countEmpty(board) > 0)
         return false;
@@ -268,19 +234,15 @@ bool gameEnded(uint8_t board[SIZE][SIZE])
     return ended;
 }
 
-void addRandom(uint8_t board[SIZE][SIZE], time_t seed)
-{
+void addRandom(uint8_t board[SIZE][SIZE], time_t seed) {
     srand(seed);
     uint8_t x, y;
     uint8_t r, len = 0;
     uint8_t n, list[SIZE * SIZE][2];
 
-    for (x = 0; x < SIZE; x++)
-    {
-        for (y = 0; y < SIZE; y++)
-        {
-            if (board[x][y] == 0)
-            {
+    for (x = 0; x < SIZE; x++) {
+        for (y = 0; y < SIZE; y++) {
+            if (board[x][y] == 0) {
                 list[len][0] = x;
                 list[len][1] = y;
                 len++;
@@ -288,8 +250,7 @@ void addRandom(uint8_t board[SIZE][SIZE], time_t seed)
         }
     }
 
-    if (len > 0)
-    {
+    if (len > 0) {
         r = rand() % len;
         x = list[r][0];
         y = list[r][1];
@@ -298,13 +259,10 @@ void addRandom(uint8_t board[SIZE][SIZE], time_t seed)
     }
 }
 
-void initBoard(uint8_t board[SIZE][SIZE])
-{
+void initBoard(uint8_t board[SIZE][SIZE]) {
     uint8_t x, y;
-    for (x = 0; x < SIZE; x++)
-    {
-        for (y = 0; y < SIZE; y++)
-        {
+    for (x = 0; x < SIZE; x++) {
+        for (y = 0; y < SIZE; y++) {
             board[x][y] = 0;
         }
     }
@@ -312,34 +270,30 @@ void initBoard(uint8_t board[SIZE][SIZE])
     addRandom(board, rand());
 }
 
-void backupState(uint8_t board[SIZE][SIZE], uint8_t bboard[SIZE][SIZE], uint32_t *score, uint32_t *bscore, time_t *seed, time_t *bseed)
-{
+void backupState(uint8_t board[SIZE][SIZE], uint8_t bboard[SIZE][SIZE],
+                 uint32_t *score, uint32_t *bscore, time_t *seed,
+                 time_t *bseed) {
     memcpy(bboard, board, SIZE * SIZE);
     *bscore = *score;
     *bseed = *seed;
 }
 
-void updateSeed(time_t *seed)
-{
+void updateSeed(time_t *seed) {
     srand(*seed);
     *seed = rand();
 }
 
-void setBufferedInput(bool enable)
-{
+void setBufferedInput(bool enable) {
     static bool enabled = true;
     static struct termios old;
     struct termios new;
 
-    if (enable && !enabled)
-    {
+    if (enable && !enabled) {
         // restore the former settings
         tcsetattr(STDIN_FILENO, TCSANOW, &old);
         // set the new state
         enabled = true;
-    }
-    else if (!enable && enabled)
-    {
+    } else if (!enable && enabled) {
         // get the terminal settings for standard input
         tcgetattr(STDIN_FILENO, &new);
         // we want to keep the old setting to restore them at the end
@@ -353,43 +307,33 @@ void setBufferedInput(bool enable)
     }
 }
 
-
-char* concatenate(char *a, char *b)
-{
-    char* c = calloc(1, strlen(a) + strlen(b) + 1);
+char *concatenate(char *a, char *b) {
+    char *c = calloc(1, strlen(a) + strlen(b) + 1);
     strcpy(c, a);
     strcat(c, b);
     return c;
 }
 
-char* getGameDir()
-{
-    char * game_dir;
-    if (getenv("HOME") == NULL)
-    {
+char *getGameDir() {
+    char *game_dir;
+    if (getenv("HOME") == NULL) {
         printf("Error!");
         exit(1);
-    }
-    else if (getenv("XDG_CONFIG_HOME") == NULL)
-    {
+    } else if (getenv("XDG_CONFIG_HOME") == NULL) {
         game_dir = concatenate(concatenate(getenv("HOME"), "/.config"), "/2048");
-    }
-    else
-    {
+    } else {
         game_dir = concatenate(getenv("XDG_CONFIG_HOME"), "/2048");
     }
     mkdir(game_dir, 0777);
     return game_dir;
 }
 
-void writeScore(uint32_t score)
-{
-    char* score_file;
+void writeScore(uint32_t score) {
+    char *score_file;
     score_file = concatenate(getGameDir(), "/score.txt");
-    FILE* fptr;
+    FILE *fptr;
     fptr = fopen(score_file, "a");
-    if (fptr == NULL)
-    {
+    if (fptr == NULL) {
         printf("Error!");
         exit(1);
     }
@@ -398,19 +342,16 @@ void writeScore(uint32_t score)
     fclose(fptr);
 }
 
-bool loadStateFromFile(uint8_t board[SIZE][SIZE], uint32_t *score, time_t *seed)
-{
-    char* state_file;
+bool loadStateFromFile(uint8_t board[SIZE][SIZE], uint32_t *score,
+                       time_t *seed) {
+    char *state_file;
     state_file = concatenate(getGameDir(), "/state");
-    FILE* fptr;
+    FILE *fptr;
     fptr = fopen(state_file, "rb");
-    if (fptr == NULL)
-    {
+    if (fptr == NULL) {
         initBoard(board);
         return false;
-    }
-    else
-    {
+    } else {
         fread(board, sizeof(uint8_t), SIZE * SIZE, fptr);
         fread(score, sizeof(uint32_t), 1, fptr);
         fread(seed, sizeof(time_t), 1, fptr);
@@ -420,18 +361,15 @@ bool loadStateFromFile(uint8_t board[SIZE][SIZE], uint32_t *score, time_t *seed)
     }
 }
 
-void writeStateToFile(uint8_t board[SIZE][SIZE], uint32_t *score, time_t *seed)
-{
-    char* state_file;
+void writeStateToFile(uint8_t board[SIZE][SIZE], uint32_t *score,
+                      time_t *seed) {
+    char *state_file;
     state_file = concatenate(getGameDir(), "/state");
-    FILE* fptr;
+    FILE *fptr;
     fptr = fopen(state_file, "wb");
-    if (fptr == NULL)
-    {
+    if (fptr == NULL) {
         printf("Error opening state file for writing!");
-    }
-    else
-    {
+    } else {
         fwrite(board, sizeof(uint8_t), SIZE * SIZE, fptr);
         fwrite(score, sizeof(uint32_t), 1, fptr);
         fwrite(seed, sizeof(time_t), 1, fptr);
@@ -439,25 +377,16 @@ void writeStateToFile(uint8_t board[SIZE][SIZE], uint32_t *score, time_t *seed)
     }
 }
 
-int test()
-{
+int test() {
     uint8_t array[SIZE];
     // these are exponents with base 2 (1=2 2=4 3=8)
     // data holds per line: 4x IN, 4x OUT, 1x POINTS
     uint8_t data[] = {
-        0, 0, 0, 1, 1, 0, 0, 0, 0,
-        0, 0, 1, 1, 2, 0, 0, 0, 4,
-        0, 1, 0, 1, 2, 0, 0, 0, 4,
-        1, 0, 0, 1, 2, 0, 0, 0, 4,
-        1, 0, 1, 0, 2, 0, 0, 0, 4,
-        1, 1, 1, 0, 2, 1, 0, 0, 4,
-        1, 0, 1, 1, 2, 1, 0, 0, 4,
-        1, 1, 0, 1, 2, 1, 0, 0, 4,
-        1, 1, 1, 1, 2, 2, 0, 0, 8,
-        2, 2, 1, 1, 3, 2, 0, 0, 12,
-        1, 1, 2, 2, 2, 3, 0, 0, 12,
-        3, 0, 1, 1, 3, 2, 0, 0, 4,
-        2, 0, 1, 1, 2, 2, 0, 0, 4};
+        0, 0, 0,  1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 2, 0, 0, 0, 4,  0, 1, 0, 1, 2, 0,
+        0, 0, 4,  1, 0, 0, 1, 2, 0, 0, 0, 4, 1, 0, 1, 0, 2, 0,  0, 0, 4, 1, 1, 1,
+        0, 2, 1,  0, 0, 4, 1, 0, 1, 1, 2, 1, 0, 0, 4, 1, 1, 0,  1, 2, 1, 0, 0, 4,
+        1, 1, 1,  1, 2, 2, 0, 0, 8, 2, 2, 1, 1, 3, 2, 0, 0, 12, 1, 1, 2, 2, 2, 3,
+        0, 0, 12, 3, 0, 1, 1, 3, 2, 0, 0, 4, 2, 0, 1, 1, 2, 2,  0, 0, 4};
     uint8_t *in, *out, *points;
     uint8_t t, tests;
     uint8_t i;
@@ -465,62 +394,50 @@ int test()
     uint32_t score;
 
     tests = (sizeof(data) / sizeof(data[0])) / (2 * SIZE + 1);
-    for (t = 0; t < tests; t++)
-    {
+    for (t = 0; t < tests; t++) {
         in = data + t * (2 * SIZE + 1);
         out = in + SIZE;
         points = in + 2 * SIZE;
-        for (i = 0; i < SIZE; i++)
-        {
+        for (i = 0; i < SIZE; i++) {
             array[i] = in[i];
         }
         score = 0;
         slideArray(array, &score);
-        for (i = 0; i < SIZE; i++)
-        {
-            if (array[i] != out[i])
-            {
+        for (i = 0; i < SIZE; i++) {
+            if (array[i] != out[i]) {
                 success = false;
             }
         }
-        if (score != *points)
-        {
+        if (score != *points) {
             success = false;
         }
-        if (success == false)
-        {
-            for (i = 0; i < SIZE; i++)
-            {
+        if (success == false) {
+            for (i = 0; i < SIZE; i++) {
                 printf("%d ", in[i]);
             }
             printf("=> ");
-            for (i = 0; i < SIZE; i++)
-            {
+            for (i = 0; i < SIZE; i++) {
                 printf("%d ", array[i]);
             }
             printf("(%d points) expected ", score);
-            for (i = 0; i < SIZE; i++)
-            {
+            for (i = 0; i < SIZE; i++) {
                 printf("%d ", in[i]);
             }
             printf("=> ");
-            for (i = 0; i < SIZE; i++)
-            {
+            for (i = 0; i < SIZE; i++) {
                 printf("%d ", out[i]);
             }
             printf("(%d points)\n", *points);
             break;
         }
     }
-    if (success)
-    {
+    if (success) {
         printf("All %u tests executed successfully\n", tests);
     }
     return !success;
 }
 
-void signal_callback_handler(int signum)
-{
+void signal_callback_handler(int signum) {
     printf("         TERMINATED         \n");
     setBufferedInput(true);
     // make cursor visible, reset all modes
@@ -528,8 +445,7 @@ void signal_callback_handler(int signum)
     exit(signum);
 }
 
-int play(char *color_scheme, bool *do_load, bool *seed_hacking)
-{
+int play(char *color_scheme, bool *do_load, bool *seed_hacking) {
     bool state_loaded = false;
 
     uint8_t board[SIZE][SIZE];
@@ -543,12 +459,10 @@ int play(char *color_scheme, bool *do_load, bool *seed_hacking)
     time_t backup_seed = seed;
     char c;
     bool success;
-    if (strcmp(color_scheme, "blackwhite") == 0)
-    {
+    if (strcmp(color_scheme, "blackwhite") == 0) {
         scheme = 1;
     }
-    if (strcmp(color_scheme, "bluered") == 0)
-    {
+    if (strcmp(color_scheme, "bluered") == 0) {
         scheme = 2;
     }
 
@@ -558,131 +472,116 @@ int play(char *color_scheme, bool *do_load, bool *seed_hacking)
     // register signal handler for when ctrl-c is pressed
     signal(SIGINT, signal_callback_handler);
 
-    if (*do_load)
-    {
+    if (*do_load) {
         state_loaded = loadStateFromFile(board, &score, &seed);
-    }
-    else
-    {
+    } else {
         initBoard(board);
     }
     backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
     setBufferedInput(false);
     drawBoard(board, scheme, score);
-    if (state_loaded)
-    {
+    if (state_loaded) {
         printf("       State loaded.      \n");
     }
-    while (true)
-    {
+    while (true) {
         c = getchar();
-        if (c == -1)
-        {
+        if (c == -1) {
             puts("\nError! Cannot read keyboard input!");
             break;
         }
-        switch (c)
-        {
-        case 97:  // 'a' key
-        case 104: // 'h' key
-        case 68:  // left arrow
-            backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
-            success = moveLeft(board, &score);
-            break;
-        case 100: // 'd' key
-        case 108: // 'l' key
-        case 67:  // right arrow
-            backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
-            success = moveRight(board, &score);
-            break;
-        case 119: // 'w' key
-        case 107: // 'k' key
-        case 65:  // up arrow
-            backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
-            success = moveUp(board, &score);
-            break;
-        case 115: // 's' key
-        case 106: // 'j' key
-        case 66:  // down arrow
-            backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
-            success = moveDown(board, &score);
-            break;
-        default:
-            success = false;
+        switch (c) {
+            case 97:  // 'a' key
+            case 104: // 'h' key
+            case 68:  // left arrow
+                backupState(board, backup_board, &score, &backup_score, &seed,
+                            &backup_seed);
+                success = moveLeft(board, &score);
+                break;
+            case 100: // 'd' key
+            case 108: // 'l' key
+            case 67:  // right arrow
+                backupState(board, backup_board, &score, &backup_score, &seed,
+                            &backup_seed);
+                success = moveRight(board, &score);
+                break;
+            case 119: // 'w' key
+            case 107: // 'k' key
+            case 65:  // up arrow
+                backupState(board, backup_board, &score, &backup_score, &seed,
+                            &backup_seed);
+                success = moveUp(board, &score);
+                break;
+            case 115: // 's' key
+            case 106: // 'j' key
+            case 66:  // down arrow
+                backupState(board, backup_board, &score, &backup_score, &seed,
+                            &backup_seed);
+                success = moveDown(board, &score);
+                break;
+            default:
+                success = false;
         }
-        if (success)
-        {
+        if (success) {
             drawBoard(board, scheme, score);
             usleep(150 * 1000); // 150 ms
             addRandom(board, seed);
             drawBoard(board, scheme, score);
             updateSeed(&seed);
-            if (gameEnded(board))
-            {
+            if (gameEnded(board)) {
                 printf("    GAME OVER, UNDO? (y/N)  \n");
                 bool undo = false;
-                while (true)
-                {
+                while (true) {
                     c = getchar();
-                    if (c == 'y')
-                    {
+                    if (c == 'y') {
                         undo = true;
                         break;
-                    }
-                    else if ((c == 'n') || (c == '\n'))
-                    {
+                    } else if ((c == 'n') || (c == '\n')) {
                         break;
                     }
                 }
-                if (undo)
-                {
-                    backupState(backup_board, board, &backup_score, &score, &backup_seed, &seed);
+                if (undo) {
+                    backupState(backup_board, board, &backup_score, &score, &backup_seed,
+                                &seed);
                     drawBoard(board, scheme, score);
-                }
-                else
-                {
+                } else {
                     break;
                 }
             }
         }
-        if (c == 'u'){
+        if (c == 'u') {
             printf("Result: %b", success);
             time_t seed_to_use;
             if (*seed_hacking) {
                 seed_to_use = time(NULL);
-            }
-            else {
+            } else {
                 seed_to_use = backup_seed;
             }
-            backupState(backup_board, board, &backup_score, &score, &seed_to_use, &seed);
+            backupState(backup_board, board, &backup_score, &score, &seed_to_use,
+                        &seed);
             drawBoard(board, scheme, score);
         }
-        if (c == 'q')
-        {
+        if (c == 'q') {
             printf("        QUIT? (y/N)         \n");
             c = getchar();
-            if (c == 'y')
-            {
+            if (c == 'y') {
                 break;
             }
             drawBoard(board, scheme, score);
         }
-        if (c == 'r')
-        {
+        if (c == 'r') {
             printf("       RESTART? (y/N)       \n");
             c = getchar();
-            if (c == 'y')
-            {
+            if (c == 'y') {
                 writeScore(score);
                 initBoard(board);
                 score = 0;
                 updateSeed(&seed);
-                backupState(board, backup_board, &score, &backup_score, &seed, &backup_seed);
+                backupState(board, backup_board, &score, &backup_score, &seed,
+                            &backup_seed);
             }
             drawBoard(board, scheme, score);
         }
-        if (c == 'x')
-        {
+        if (c == 'x') {
             writeStateToFile(board, &score, &seed);
             printf("       State written.       \n");
             printf("\033[?25h\033[m");
@@ -698,52 +597,40 @@ int play(char *color_scheme, bool *do_load, bool *seed_hacking)
     return EXIT_SUCCESS;
 }
 
-void getOpts(
-    int argc,
-    char *argv[],
-    bool *test_mode,
-    bool *do_load,
-    bool *seed_hacking,
-    char* color_scheme
-)
-{
+void getOpts(int argc, char *argv[], bool *test_mode, bool *do_load,
+             bool *seed_hacking, char *color_scheme) {
     int opt;
-    while ((opt = getopt(argc, argv, "tcls")) != -1)
-    {
-        switch (opt)
-        {
-        case 't':
-            *test_mode = true;
-            break;
-        case 'c':
-            strcpy(color_scheme, argv[optind]);
-            break;
-        case 'l':
-            *do_load = true;
-            break;
-        case 's':
-            *seed_hacking = true;
-            break;
-        default:
-            printf("Usage: %s [-t] [-l] [-s] [-c <standard|blackwhite|bluered] \n", argv[0]);
-            exit(EXIT_FAILURE);
+    while ((opt = getopt(argc, argv, "tcls")) != -1) {
+        switch (opt) {
+            case 't':
+                *test_mode = true;
+                break;
+            case 'c':
+                strcpy(color_scheme, argv[optind]);
+                break;
+            case 'l':
+                *do_load = true;
+                break;
+            case 's':
+                *seed_hacking = true;
+                break;
+            default:
+                printf("Usage: %s [-t] [-l] [-s] [-c <standard|blackwhite|bluered] \n",
+                       argv[0]);
+                exit(EXIT_FAILURE);
         }
     }
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     bool test_mode = false;
     bool do_load = false;
     bool seed_hacking = false;
     char color_scheme[10] = "standard";
     getOpts(argc, argv, &test_mode, &do_load, &seed_hacking, color_scheme);
-    if (test_mode)
-    {
+    if (test_mode) {
         exit(test());
-    }
-    else
-    {
+    } else {
         exit(play(color_scheme, &do_load, &seed_hacking));
     }
 }
